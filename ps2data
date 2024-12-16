@@ -1,0 +1,46 @@
+module top_module(
+    input clk,
+    input [7:0] in,
+    input reset,    // Synchronous reset
+    output reg [23:0] out_bytes,
+    output done
+); 
+    // State encoding
+    parameter A = 0, B = 1, C = 2, D = 3;
+    reg [1:0] state, next_state;
+    reg [23:0] temp; // Temporary register to hold 3 bytes
+
+    // State transition logic (combinational)
+    always @(*) begin
+        case(state)
+            A:begin next_state = in[3] ? B : A; // Wait for the first byte (validity check)
+            	temp[23:16] = in;
+            end
+            B:begin next_state = C;
+                temp[15:8] = in;
+            end// Move to the second byte
+            C:begin next_state = D; 
+                temp[7:0] = in;end// Move to the third byte
+            D:begin next_state = in[3] ? B : A; 
+                temp[23:16] = in; 
+            	end// Return to B if valid, else reset to A
+            default: next_state = A;
+        endcase
+    end
+
+    // State flip-flops (sequential)
+    always @(posedge clk) begin
+        if (reset) begin
+            state <= A;
+        end else begin
+            state <= next_state;
+            out_bytes <= temp;
+        end
+    end
+
+
+    // Output logic
+    assign done = (state == D); // Signal is asserted at state D
+
+
+endmodule
