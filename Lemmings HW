@@ -1,3 +1,5 @@
+//first part - shift or count
+
 module top_module(
     input clk,
     input areset,    // Freshly brainwashed Lemmings walk left.
@@ -9,32 +11,43 @@ module top_module(
     output walk_right,
     output aaah,
     output digging ); 
-    parameter WL =0, WR =1, FALL_R =2, FALL_L =3, DIG_L = 4, DIG_R =5;
-    reg [2:0] state, next_state;
 
+    parameter WL =0, WR =1, FALL_R =2, FALL_L =3, DIG_L = 4, DIG_R =5, SPLATTER = 6;
+    reg [2:0] state, next_state;
+    reg [4:0] counter , next_counter;
+    reg splatter;
     
     always @(*) begin
         case(state)
             WL: next_state = ground ? (dig ? DIG_L : ((bump_left) ? WR : WL)) : FALL_L;  
             WR: next_state = ground ? (dig ? DIG_R : ((bump_right) ? WL : WR)) : FALL_R;
-            FALL_L: next_state = ground ?  WL : FALL_L;
-            FALL_R: next_state = ground ?  WR : FALL_R;
+            FALL_L: next_state = ground ?  ((splatter) ? SPLATTER : WL) : FALL_L;
+            FALL_R: next_state = ground ?  ((splatter) ? SPLATTER : WR ): FALL_R;
             DIG_L: next_state = ground ? DIG_L : FALL_L;
             DIG_R: next_state = ground ? DIG_R : FALL_R;
+            SPLATTER: next_state = areset ? WL : SPLATTER;
             default next_state = WL;
         endcase
+       
     end
     
     always @(posedge clk or posedge areset) begin
         
-        if(areset) state <= WL;
-        else state <= next_state;
-        
+        if(areset) begin
+            state <= WL;
+            counter <= 0;
+            splatter <= 0;
+            end else begin
+                state <= next_state;
+                counter <= next_counter;
+                if(counter >= 20) splatter <= 1;
+
+            end
     end
-    
-    assign walk_left = (state == WL); 
-    assign walk_right = (state == WR);
-    assign aaah = (state == FALL_L || state == FALL_R);
-    assign digging = ((state == DIG_L || state == DIG_R) && ~(state == FALL_L || state == FALL_R));
-    
+    assign aaah = (state == FALL_L) || (state ==FALL_R);
+    assign next_counter = ((state == FALL_L) || (state ==FALL_R)) ? counter + 1 : 0;
+    assign walk_left = (state == WL) && ~splatter; 
+    assign walk_right = (state == WR) && ~splatter;
+    assign digging = ((state == DIG_L || state == DIG_R) && ~(state == FALL_L || state == FALL_R)) && ~splatter;
+	
 endmodule
