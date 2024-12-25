@@ -15,7 +15,7 @@ module top_module(
     parameter WL =0, WR =1, FALL_R =2, FALL_L =3, DIG_L = 4, DIG_R =5, SPLATTER = 6;
     reg [2:0] state, next_state;
     reg [4:0] counter , next_counter;
-    reg splatter;
+    reg splatter, gm;
     
     always @(*) begin
         case(state)
@@ -27,24 +27,23 @@ module top_module(
             DIG_R: next_state = ground ? DIG_R : FALL_R;
             SPLATTER: next_state = areset ? WL : SPLATTER;
             default next_state = WL;
-        endcase
-       
+        endcase       
     end
     
-    always @(posedge clk or posedge areset) begin
-        
+    always @(posedge clk or posedge areset) begin      
         if(areset) begin
             state <= WL;
             counter <= 0;
             splatter <= 0;
+            gm <= 0;
             end else begin
                 state <= next_state;
                 counter <= next_counter;
-                if(counter >= 20) splatter <= 1;
-
+                if(counter == 20) splatter <= 1;
+                if(splatter & ground) gm <= 1;
             end
     end
-    assign aaah = (state == FALL_L) || (state ==FALL_R);
+    assign aaah = (state == FALL_L) || (state ==FALL_R) && ~gm;
     assign next_counter = ((state == FALL_L) || (state ==FALL_R)) ? counter + 1 : 0;
     assign walk_left = (state == WL) && ~splatter; 
     assign walk_right = (state == WR) && ~splatter;
